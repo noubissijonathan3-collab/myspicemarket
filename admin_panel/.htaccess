@@ -1,0 +1,19 @@
+# My SpiceMarket Admin Panel — Apache Configuration
+RewriteEngine On
+
+# Prevent directory listing
+Options -Indexes
+
+# Deny access to sensitive files
+<FilesMatch "\.(env|log|ini|sql|bak)$">
+    Require all denied
+</FilesMatch>
+
+# Protect config directory
+RewriteRule ^config/ - [F,L]
+
+# Block PHP execution in uploads
+RewriteRule ^uploads/.*\.php$ - [F,L]
+
+# Default document
+DirectoryIndex index.php
