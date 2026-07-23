@@ -30,6 +30,7 @@ define('API_ADMIN_SEARCH',       API_BASE_URL . '/admin/search');
 define('API_ADMIN_FAVORITES',    API_BASE_URL . '/admin/favorites');
 define('API_ADMIN_NOTIFICATIONS',API_BASE_URL . '/admin/notifications');
 define('API_ADMIN_MEAL_INGREDIENTS', API_BASE_URL . '/admin/meals');
+define('API_ADMIN_AGENTS',        API_BASE_URL . '/admin/agents');
 define('API_TRACKING_ACTIVE',       API_BASE_URL . '/tracking/active');
 define('API_TRACKING_AGENT',        API_BASE_URL . '/tracking/agent');
 define('API_TRACKING_ORDER',        API_BASE_URL . '/tracking/order');

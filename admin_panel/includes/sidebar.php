@@ -22,6 +22,7 @@ $navGroups = [
     'Commerce' => [
         ['page' => 'orders',      'icon' => 'bi-cart-check',    'label' => 'Orders',       'href' => admin_url('pages/orders/orders.php'), 'badge' => $pendingOrdersBadge ?? ''],
         ['page' => 'deliveries',  'icon' => 'bi-bicycle',       'label' => 'Deliveries',   'href' => admin_url('pages/deliveries/deliveries.php')],
+        ['page' => 'agents',      'icon' => 'bi-people-fill',   'label' => 'Agents',       'href' => admin_url('pages/agents/agents.php')],
         ['page' => 'tracking',    'icon' => 'bi-geo-alt',        'label' => 'Live Tracking', 'href' => admin_url('pages/deliveries/tracking.php')],
         ['page' => 'payments',    'icon' => 'bi-credit-card',   'label' => 'Payments',     'href' => admin_url('pages/payments/payments.php')],
     ],

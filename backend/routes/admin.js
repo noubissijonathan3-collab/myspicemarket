@@ -430,6 +430,101 @@ router.get("/prep-agents", async (req, res) => {
   }
 });
 
+// ==================== AGENTS (Delivery + Preparation) ====================
+
+// List all agents (both deliveryAgent and preparationAgent)
+router.get("/agents", async (req, res) => {
+  try {
+    const query = {};
+    if (req.query.role) {
+      query.role = req.query.role;
+    } else {
+      query.role = { $in: ["deliveryAgent", "preparationAgent"] };
+    }
+    if (req.query.search) {
+      const re = { $regex: req.query.search, $options: "i" };
+      query.$or = [{ fullName: re }, { email: re }, { phone: re }];
+    }
+    const agents = await User.find(query).select("-password").sort({ createdAt: -1 });
+
+    const enriched = await Promise.all(agents.map(async (agent) => {
+      const obj = agent.toObject();
+      if (agent.role === "deliveryAgent") {
+        obj.activeDeliveries = await Order.countDocuments({ deliveryAgent: agent._id, status: { $in: ["Out for Delivery", "On Route"] } });
+        obj.completedDeliveries = await Order.countDocuments({ deliveryAgent: agent._id, status: "Delivered" });
+      }
+      if (agent.role === "preparationAgent") {
+        obj.activePrepOrders = await Order.countDocuments({ preparationAgent: agent._id, status: { $in: ["Preparing", "Ready"] } });
+        obj.completedPrepOrders = await Order.countDocuments({ preparationAgent: agent._id, status: { $in: ["Delivered", "Out for Delivery", "On Route"] } });
+      }
+      return obj;
+    }));
+
+    res.json(enriched);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Create a new agent (delivery or preparation)
+router.post("/agents", async (req, res) => {
+  try {
+    const { fullName, email, phone, password, role } = req.body;
+
+    if (!["deliveryAgent", "preparationAgent"].includes(role)) {
+      return res.status(400).json({ message: "Role must be 'deliveryAgent' or 'preparationAgent'" });
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ message: "A user with this email already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const agent = await User.create({
+      fullName,
+      email,
+      phone,
+      password: hashedPassword,
+      role,
+      isVerified: true,
+    });
+
+    const result = agent.toObject();
+    delete result.password;
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update an agent
+router.put("/agents/:id", async (req, res) => {
+  try {
+    const { password, ...rest } = req.body;
+    const updateData = { ...rest };
+    if (password && password.length >= 6) {
+      updateData.password = await bcrypt.hash(password, 10);
+    } else {
+      delete updateData.password;
+    }
+    const agent = await User.findByIdAndUpdate(req.params.id, { $set: updateData }, { returnDocument: "after" }).select("-password");
+    if (!agent) return res.status(404).json({ message: "Agent not found" });
+    res.json(agent);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Delete an agent
+router.delete("/agents/:id", async (req, res) => {
+  try {
+    const agent = await User.findByIdAndDelete(req.params.id);
+    if (!agent) return res.status(404).json({ message: "Agent not found" });
+    res.json({ message: "Agent deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // ==================== CUSTOMERS ====================
 
 router.get("/customers", async (req, res) => {
