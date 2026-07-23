@@ -138,7 +138,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> with SingleTick
       return;
     }
     try {
-      final room = await ChatService.createChatRoom(widget.orderId);
+      final room = await ChatService.createChatRoom(widget.orderId, agentType: 'preparation');
       if (!mounted) return;
       setState(() => _chatRoomId = room.id);
       Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(

@@ -16,6 +16,7 @@ const orderSchema = new mongoose.Schema(
       longitude: { type: Number, default: null },
       notes: { type: String, default: "" },
     },
+    preparationAgent: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     deliveryAgent: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     deliveryStatus: {
       type: String,

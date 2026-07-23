@@ -11,6 +11,8 @@ router.get("/", authMiddleware, async (req, res) => {
       query.userId = req.user._id;
     }
     const orders = await Order.find(query)
+      .populate("preparationAgent", "fullName phone profileImage")
+      .populate("deliveryAgent", "fullName phone profileImage")
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
@@ -20,7 +22,9 @@ router.get("/", authMiddleware, async (req, res) => {
 
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id)
+      .populate("preparationAgent", "fullName phone profileImage")
+      .populate("deliveryAgent", "fullName phone profileImage");
     if (!order) return res.status(404).json({ message: "Order not found" });
     const items = await OrderItem.find({ orderId: order._id }).populate("foodstuffId", "name image unit");
     res.json({ order, items });

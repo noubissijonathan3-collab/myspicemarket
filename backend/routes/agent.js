@@ -25,6 +25,13 @@ const deliveryOnly = (req, res, next) => {
   next();
 };
 
+const prepOnly = (req, res, next) => {
+  if (req.user.role !== "preparationAgent" && req.user.role !== "admin") {
+    return res.status(403).json({ message: "Preparation agent access required" });
+  }
+  next();
+};
+
 // ==================== PROFILE ====================
 
 router.get("/profile", agentOnly, async (req, res) => {
@@ -40,6 +47,16 @@ router.get("/profile", agentOnly, async (req, res) => {
     const activeDeliveries = await Order.countDocuments({
       deliveryAgent: req.user._id,
       status: { $in: ["Out for Delivery", "On Route"] },
+    });
+
+    const activePrepOrders = await Order.countDocuments({
+      preparationAgent: req.user._id,
+      status: "Preparing",
+    });
+
+    const completedPrepOrders = await Order.countDocuments({
+      preparationAgent: req.user._id,
+      status: { $in: ["Ready", "Out for Delivery", "On Route", "Delivered"] },
     });
 
     const todayStart = new Date();
@@ -71,6 +88,8 @@ router.get("/profile", agentOnly, async (req, res) => {
         todayDeliveries,
         totalEarnings,
         todayEarnings,
+        activePrepOrders,
+        completedPrepOrders,
       },
     });
   } catch (error) {
@@ -370,6 +389,112 @@ router.put("/orders/:id/reject", deliveryOnly, async (req, res) => {
     }
 
     res.json({ message: "Assignment rejected" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ==================== PREPARATION AGENT ORDERS ====================
+
+router.get("/prep/orders", prepOnly, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const query = { preparationAgent: req.user._id };
+
+    if (status) {
+      const statusMap = {
+        assigned: { status: "Preparing", preparationAgent: req.user._id },
+        active: { status: "Preparing", preparationAgent: req.user._id },
+        completed: { status: { $in: ["Ready", "Out for Delivery", "On Route", "Delivered"] }, preparationAgent: req.user._id },
+        pending: { status: "Confirmed", preparationAgent: null },
+      };
+      if (statusMap[status]) {
+        Object.assign(query, statusMap[status]);
+      }
+    }
+
+    const orders = await Order.find(query)
+      .populate("userId", "fullName phone email address")
+      .populate("preparationAgent", "fullName phone")
+      .sort({ createdAt: -1 });
+
+    const ordersWithItems = await Promise.all(
+      orders.map(async (order) => {
+        const items = await OrderItem.find({ orderId: order._id })
+          .populate("foodstuffId", "name image unit price");
+        return { order, items };
+      })
+    );
+
+    res.json(ordersWithItems);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/prep/orders/:id", prepOnly, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate("userId", "fullName phone email address")
+      .populate("preparationAgent", "fullName phone");
+
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const items = await OrderItem.find({ orderId: order._id })
+      .populate("foodstuffId", "name image unit price");
+
+    res.json({ order, items });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Prep agent accepts assignment
+router.put("/prep/orders/:id/accept", prepOnly, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (order.preparationAgent && order.preparationAgent.toString() !== req.user._id.toString()) {
+      return res.status(400).json({ message: "Order already assigned to another agent" });
+    }
+
+    order.preparationAgent = req.user._id;
+    order.status = "Preparing";
+    await order.save();
+
+    const updated = await Order.findById(order._id)
+      .populate("userId", "fullName phone email address")
+      .populate("preparationAgent", "fullName phone");
+
+    const items = await OrderItem.find({ orderId: order._id })
+      .populate("foodstuffId", "name image unit price");
+
+    res.json({ order: updated, items });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Prep agent marks order as ready
+router.put("/prep/orders/:id/ready", prepOnly, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (order.preparationAgent && order.preparationAgent.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "This order is assigned to another agent" });
+    }
+
+    order.status = "Ready";
+    await order.save();
+
+    const updated = await Order.findById(order._id)
+      .populate("userId", "fullName phone email address")
+      .populate("preparationAgent", "fullName phone");
+
+    const items = await OrderItem.find({ orderId: order._id })
+      .populate("foodstuffId", "name image unit price");
+
+    res.json({ order: updated, items });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

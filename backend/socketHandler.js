@@ -32,11 +32,12 @@ const setupSocket = (io) => {
       socket.to(chatRoomId).emit("user_online", { userId: socket.user._id.toString() });
     });
 
-    // Join a chat room by orderId — resolves orderId to chatRoomId
-    socket.on("join_order", async ({ orderId }) => {
+    // Join a chat room by orderId — resolves orderId to chatRoomId. Accepts agentType.
+    socket.on("join_order", async ({ orderId, agentType }) => {
       if (!orderId) return;
       try {
-        let room = await ChatRoom.findOne({ orderId });
+        const resolvedType = agentType || "preparation";
+        let room = await ChatRoom.findOne({ orderId, agentType: resolvedType });
         if (!room) {
           const isAgent = socket.user.role === "deliveryAgent" || socket.user.role === "preparationAgent" || socket.user.role === "admin";
           room = await ChatRoom.create({
@@ -45,6 +46,7 @@ const setupSocket = (io) => {
             agentId: isAgent ? socket.user._id : null,
             agentName: isAgent ? (socket.user.fullName || "") : "",
             agentAvatar: isAgent ? (socket.user.profileImage || "") : "",
+            agentType: resolvedType,
           });
         } else {
           const isAgent = socket.user.role === "deliveryAgent" || socket.user.role === "preparationAgent" || socket.user.role === "admin";
@@ -65,6 +67,7 @@ const setupSocket = (io) => {
           agentId: room.agentId,
           agentName: room.agentName,
           agentAvatar: room.agentAvatar,
+          agentType: room.agentType,
           status: room.status,
         });
 
@@ -85,9 +88,10 @@ const setupSocket = (io) => {
       socket.to(chatRoomId).emit("user_offline", { userId: socket.user._id.toString() });
     });
 
-    socket.on("leave_order", ({ orderId }) => {
+    socket.on("leave_order", ({ orderId, agentType }) => {
       if (!orderId) return;
-      ChatRoom.findOne({ orderId }).then((room) => {
+      const resolvedType = agentType || "preparation";
+      ChatRoom.findOne({ orderId, agentType: resolvedType }).then((room) => {
         if (room) {
           socket.leave(room._id.toString());
           socket.to(room._id.toString()).emit("user_offline", { userId: socket.user._id.toString() });

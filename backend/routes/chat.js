@@ -7,10 +7,20 @@ const { protect: authMiddleware } = require("../middleware/auth");
 
 // ==================== CHAT ROOM ENDPOINTS ====================
 
-// Get chat room for an order (works for both customer and agent)
+// Get chat room for an order — supports ?agentType=preparation|delivery
 router.get("/room/:orderId", authMiddleware, async (req, res) => {
   try {
-    const room = await ChatRoom.findOne({ orderId: req.params.orderId });
+    const { agentType } = req.query;
+    const query = { orderId: req.params.orderId };
+    if (agentType) query.agentType = agentType;
+
+    let room;
+    if (agentType) {
+      room = await ChatRoom.findOne(query);
+    } else {
+      // No agentType specified — return first room for backwards compat
+      room = await ChatRoom.findOne({ orderId: req.params.orderId });
+    }
     if (!room) return res.json(null);
     res.json(room);
   } catch (error) {
@@ -18,13 +28,25 @@ router.get("/room/:orderId", authMiddleware, async (req, res) => {
   }
 });
 
-// Create or get chat room for an order (works for both customer and agent)
+// Get all chat rooms for an order (returns array)
+router.get("/rooms/:orderId", authMiddleware, async (req, res) => {
+  try {
+    const rooms = await ChatRoom.find({ orderId: req.params.orderId });
+    res.json(rooms);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Create or get chat room for an order — accepts agentType
 router.post("/room", authMiddleware, async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, agentType } = req.body;
     if (!orderId) return res.status(400).json({ message: "orderId is required" });
 
-    let room = await ChatRoom.findOne({ orderId });
+    const resolvedType = agentType || "preparation";
+
+    let room = await ChatRoom.findOne({ orderId, agentType: resolvedType });
     if (room) {
       const isAgent = req.user.role === "deliveryAgent" || req.user.role === "preparationAgent" || req.user.role === "admin";
       if (isAgent && !room.agentId) {
@@ -43,6 +65,7 @@ router.post("/room", authMiddleware, async (req, res) => {
       agentId: isAgent ? req.user._id : null,
       agentName: isAgent ? (req.user.fullName || "") : "",
       agentAvatar: isAgent ? (req.user.profileImage || "") : "",
+      agentType: resolvedType,
     });
     res.status(201).json(room);
   } catch (error) {
@@ -52,10 +75,16 @@ router.post("/room", authMiddleware, async (req, res) => {
 
 // ==================== MESSAGE ENDPOINTS ====================
 
-// Get messages for an order (agent uses orderId, resolves to chatRoomId)
+// Get messages for an order (agent uses orderId, resolves to chatRoomId) — supports ?agentType=
 router.get("/:orderId", authMiddleware, async (req, res) => {
   try {
-    const room = await ChatRoom.findOne({ orderId: req.params.orderId });
+    const { agentType } = req.query;
+    const query = { orderId: req.params.orderId };
+    if (agentType) query.agentType = agentType;
+
+    const room = agentType
+      ? await ChatRoom.findOne(query)
+      : await ChatRoom.findOne({ orderId: req.params.orderId });
     if (!room) return res.json([]);
     const messages = await Message.find({ chatRoomId: room._id }).sort({ createdAt: 1 });
     res.json(messages);
@@ -64,13 +93,14 @@ router.get("/:orderId", authMiddleware, async (req, res) => {
   }
 });
 
-// Send message for an order (agent uses orderId)
+// Send message for an order (agent uses orderId) — supports agentType in body
 router.post("/:orderId", authMiddleware, async (req, res) => {
   try {
-    const { message, type, fileUrl } = req.body;
+    const { message, type, fileUrl, agentType } = req.body;
     if (!message && !fileUrl) return res.status(400).json({ message: "Message is required" });
 
-    let room = await ChatRoom.findOne({ orderId: req.params.orderId });
+    const resolvedType = agentType || "preparation";
+    let room = await ChatRoom.findOne({ orderId: req.params.orderId, agentType: resolvedType });
     if (!room) {
       const isAgent = req.user.role === "deliveryAgent" || req.user.role === "preparationAgent" || req.user.role === "admin";
       room = await ChatRoom.create({
@@ -79,6 +109,7 @@ router.post("/:orderId", authMiddleware, async (req, res) => {
         agentId: isAgent ? req.user._id : null,
         agentName: isAgent ? (req.user.fullName || "") : "",
         agentAvatar: isAgent ? (req.user.profileImage || "") : "",
+        agentType: resolvedType,
       });
     }
 

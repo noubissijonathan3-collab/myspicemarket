@@ -320,6 +320,7 @@ router.get("/orders", async (req, res) => {
     const orders = await Order.find(query)
       .populate("userId", "fullName email phone")
       .populate("deliveryAgent", "fullName email phone")
+      .populate("preparationAgent", "fullName phone")
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
@@ -388,6 +389,39 @@ router.put("/orders/:id/rider", async (req, res) => {
     );
     if (!order) return res.status(404).json({ message: "Order not found" });
     res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Assign preparation agent to order
+router.put("/orders/:id/prep-agent", async (req, res) => {
+  try {
+    const { agentId } = req.body;
+    const user = await User.findById(agentId).select("_id role");
+    if (!user || (user.role !== "preparationAgent" && user.role !== "admin")) {
+      return res.status(400).json({ message: "Invalid preparation agent" });
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { $set: { preparationAgent: agentId, status: "Preparing" } },
+      { returnDocument: "after" }
+    ).populate("userId", "fullName phone email address")
+     .populate("preparationAgent", "fullName phone");
+
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get unassigned prep agents
+router.get("/prep-agents", async (req, res) => {
+  try {
+    const agents = await User.find({ role: "preparationAgent" }).select("-password").sort({ fullName: 1 });
+    res.json(agents);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

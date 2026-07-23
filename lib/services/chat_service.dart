@@ -52,6 +52,7 @@ class ChatRoomData {
   final String? agentId;
   final String agentName;
   final String agentAvatar;
+  final String agentType;
   final String status;
 
   ChatRoomData({
@@ -61,6 +62,7 @@ class ChatRoomData {
     this.agentId,
     this.agentName = '',
     this.agentAvatar = '',
+    this.agentType = 'preparation',
     this.status = 'active',
   });
 
@@ -71,6 +73,7 @@ class ChatRoomData {
     agentId: json['agentId'],
     agentName: json['agentName'] ?? '',
     agentAvatar: json['agentAvatar'] ?? '',
+    agentType: json['agentType'] ?? 'preparation',
     status: json['status'] ?? 'active',
   );
 }
@@ -104,11 +107,11 @@ class ChatService {
     return null;
   }
 
-  static Future<ChatRoomData?> getChatRoom(String orderId) async {
+  static Future<ChatRoomData?> getChatRoom(String orderId, {String agentType = 'preparation'}) async {
     final token = await _getToken();
     if (token == null) return null;
     final res = await http.get(
-      Uri.parse('$_apiBase/room/$orderId'),
+      Uri.parse('$_apiBase/room/$orderId?agentType=$agentType'),
       headers: { 'Authorization': 'Bearer $token' },
     );
     if (res.statusCode == 200 && res.body != 'null') {
@@ -117,13 +120,13 @@ class ChatService {
     return null;
   }
 
-  static Future<ChatRoomData> createChatRoom(String orderId) async {
+  static Future<ChatRoomData> createChatRoom(String orderId, {String agentType = 'preparation'}) async {
     final token = await _getToken();
     if (token == null) throw Exception('Not authenticated');
     final res = await http.post(
       Uri.parse('$_apiBase/room'),
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer $token' },
-      body: jsonEncode({ 'orderId': orderId }),
+      body: jsonEncode({ 'orderId': orderId, 'agentType': agentType }),
     );
     if (res.statusCode == 201 || res.statusCode == 200) {
       return ChatRoomData.fromJson(jsonDecode(res.body));

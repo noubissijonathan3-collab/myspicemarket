@@ -49,9 +49,12 @@ import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  final options = DefaultFirebaseOptions.currentPlatform;
+  if (options != null) {
+    try {
+      await Firebase.initializeApp(options: options);
+    } catch (_) {}
+  }
   runApp(
     DevicePreview(
       enabled: kIsWeb && !kReleaseMode,

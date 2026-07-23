@@ -116,7 +116,7 @@ class _CustomerTrackingScreenState extends State<CustomerTrackingScreen> {
   void _openChat() async {
     String? chatRoomId;
     try {
-      final room = await ChatService.getChatRoom(widget.orderId);
+      final room = await ChatService.getChatRoom(widget.orderId, agentType: 'delivery');
       if (room != null) {
         chatRoomId = room['id'] ?? room['_id'];
       }
@@ -124,7 +124,7 @@ class _CustomerTrackingScreenState extends State<CustomerTrackingScreen> {
 
     if (chatRoomId == null) {
       try {
-        final room = await ChatService.createChatRoom(widget.orderId);
+        final room = await ChatService.createChatRoom(widget.orderId, agentType: 'delivery');
         chatRoomId = room['id'] ?? room['_id'];
       } catch (_) {}
     }

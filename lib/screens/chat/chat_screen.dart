@@ -11,6 +11,7 @@ class ChatScreen extends StatefulWidget {
   final String agentName;
   final String agentAvatar;
   final String agentId;
+  final bool isReadOnly;
 
   const ChatScreen({
     super.key,
@@ -19,6 +20,7 @@ class ChatScreen extends StatefulWidget {
     this.agentName = 'Preparation Agent',
     this.agentAvatar = '',
     this.agentId = '',
+    this.isReadOnly = false,
   });
 
   @override
@@ -166,6 +168,7 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
+          if (widget.isReadOnly) _buildReadOnlyBanner(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -173,9 +176,28 @@ class _ChatScreenState extends State<ChatScreen> {
                     ? _buildEmptyState()
                     : _buildMessageList(),
           ),
-          if (_otherTyping) _buildTypingIndicator(),
-          _buildQuickReplies(),
-          _buildInputBar(),
+          if (!widget.isReadOnly && _otherTyping) _buildTypingIndicator(),
+          if (!widget.isReadOnly) _buildQuickReplies(),
+          if (!widget.isReadOnly) _buildInputBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      color: Colors.orange.shade50,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.orange.shade700),
+          const SizedBox(width: 8),
+          Text(
+            'This chat is closed. Messages can no longer be sent.',
+            style: TextStyle(fontSize: 13, color: Colors.orange.shade700),
+          ),
         ],
       ),
     );
@@ -219,7 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.phone_outlined, size: 20),
-            onPressed: widget.agentId.isNotEmpty
+            onPressed: (widget.agentId.isNotEmpty && !widget.isReadOnly)
                 ? () {
                     Navigator.push(
                       context,
@@ -249,7 +271,12 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(height: 16),
           Text('No messages yet', style: TextStyle(fontSize: 16, color: Colors.grey.shade500)),
           const SizedBox(height: 8),
-          Text('Send a message to your preparation agent', style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
+          Text(
+            widget.isReadOnly
+                ? 'This chat is no longer active'
+                : 'Send a message to your ${widget.agentName}',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+          ),
         ],
       ),
     );
