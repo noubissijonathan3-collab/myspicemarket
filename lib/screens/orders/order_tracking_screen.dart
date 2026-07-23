@@ -104,30 +104,36 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
+  bool get _isPrepAgentAssigned => _preparationAgentId != null;
+  bool get _isDeliveryAgentAssigned => _deliveryAgentId != null;
+
   bool get _isPrepChatActive {
-    return _preparationAgentId != null &&
+    return _isPrepAgentAssigned &&
         (_orderStatus == 'Preparing' || _orderStatus == 'Ready' ||
          _orderStatus == 'Out for Delivery' || _orderStatus == 'On Route');
   }
 
   bool get _isDeliveryChatActive {
-    return _deliveryAgentId != null &&
+    return _isDeliveryAgentAssigned &&
         (_orderStatus == 'Out for Delivery' || _orderStatus == 'On Route');
   }
 
   bool get _isPrepChatFrozen {
-    return _preparationAgentId != null && (_orderStatus == 'Delivered' || _orderStatus == 'Cancelled');
+    return _isPrepAgentAssigned && (_orderStatus == 'Delivered' || _orderStatus == 'Cancelled');
   }
 
   bool get _isDeliveryChatFrozen {
-    return _deliveryAgentId != null && (_orderStatus == 'Delivered' || _orderStatus == 'Cancelled');
+    return _isDeliveryAgentAssigned && (_orderStatus == 'Delivered' || _orderStatus == 'Cancelled');
   }
+
+  bool get _isDone => _orderStatus == 'Delivered' || _orderStatus == 'Cancelled';
 
   bool _isTrackable() {
     return _orderStatus == 'Out for Delivery' || _orderStatus == 'On Route';
   }
 
   Future<void> _openPrepChat() async {
+    if (!_isPrepAgentAssigned) return;
     await ChatService.connect();
     if (_prepChatRoom == null) {
       try {
@@ -158,6 +164,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _openDeliveryChat() async {
+    if (!_isDeliveryAgentAssigned) return;
     await ChatService.connect();
     if (_deliveryChatRoom == null) {
       try {
@@ -239,28 +246,31 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         _buildTrackLiveButton(),
                       ],
                       const SizedBox(height: 20),
-                      if (_isPrepChatActive || _isPrepChatFrozen)
-                        _buildAgentChatCard(
-                          title: 'Preparation Agent',
-                          agentName: _preparationAgentName,
-                          agentId: _preparationAgentId,
-                          isFrozen: _isPrepChatFrozen,
-                          isActive: _isPrepChatActive,
-                          onChat: _openPrepChat,
-                          agentType: 'preparation',
-                        ),
-                      if (_isPrepChatActive || _isPrepChatFrozen)
+                      if (!_isDone) ...[
+                        Text('Agent Chat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
                         const SizedBox(height: 12),
-                      if (_isDeliveryChatActive || _isDeliveryChatFrozen)
-                        _buildAgentChatCard(
-                          title: 'Delivery Agent',
-                          agentName: _deliveryAgentName,
-                          agentId: _deliveryAgentId,
-                          isFrozen: _isDeliveryChatFrozen,
-                          isActive: _isDeliveryChatActive,
-                          onChat: _openDeliveryChat,
-                          agentType: 'delivery',
-                        ),
+                      ],
+                      _buildAgentChatCard(
+                        title: 'Preparation Agent',
+                        agentName: _preparationAgentName,
+                        agentId: _preparationAgentId,
+                        isFrozen: _isPrepChatFrozen,
+                        isActive: _isPrepChatActive,
+                        isAssigned: _isPrepAgentAssigned,
+                        onChat: _openPrepChat,
+                        agentType: 'preparation',
+                      ),
+                      const SizedBox(height: 12),
+                      _buildAgentChatCard(
+                        title: 'Delivery Agent',
+                        agentName: _deliveryAgentName,
+                        agentId: _deliveryAgentId,
+                        isFrozen: _isDeliveryChatFrozen,
+                        isActive: _isDeliveryChatActive,
+                        isAssigned: _isDeliveryAgentAssigned,
+                        onChat: _openDeliveryChat,
+                        agentType: 'delivery',
+                      ),
                     ],
                   ),
                 ),
@@ -419,9 +429,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     required String? agentId,
     required bool isFrozen,
     required bool isActive,
+    required bool isAssigned,
     required VoidCallback onChat,
     required String agentType,
   }) {
+    final bool isWaiting = !isAssigned && !isFrozen;
+    final bool canChat = isActive || isFrozen;
+
     return Card(
       elevation: 0,
       color: Colors.white,
@@ -441,6 +455,20 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
                     child: const Text('Closed', style: TextStyle(fontSize: 11, color: Colors.grey)),
                   ),
+                ] else if (isActive) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(8)),
+                    child: Text('Active', style: TextStyle(fontSize: 11, color: Colors.green.shade700)),
+                  ),
+                ] else if (isWaiting) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(8)),
+                    child: Text('Pending', style: TextStyle(fontSize: 11, color: Colors.orange.shade700)),
+                  ),
                 ],
               ],
             ),
@@ -449,10 +477,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: AppColors.primaryContainer,
+                  backgroundColor: isAssigned ? AppColors.primaryContainer : Colors.grey.shade200,
                   child: Icon(
                     agentType == 'preparation' ? Icons.kitchen : Icons.delivery_dining,
-                    color: Colors.white,
+                    color: isAssigned ? Colors.white : Colors.grey,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -460,7 +488,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(agentName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                      Text(
+                        isAssigned ? agentName : 'Waiting for agent assignment...',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: isAssigned ? AppColors.onSurface : Colors.grey,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Row(
                         children: [
@@ -469,12 +504,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             height: 8,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: isActive ? Colors.green : Colors.grey,
+                              color: isActive ? Colors.green : (isFrozen ? Colors.grey : Colors.orange),
                             ),
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            isActive ? 'Online' : (isFrozen ? 'Chat ended' : 'Offline'),
+                            isActive ? 'Online — ready to chat' : (isFrozen ? 'Chat ended' : (isWaiting ? 'Not yet assigned' : 'Waiting for turn')),
                             style: const TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
@@ -489,22 +524,28 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: (isActive || isFrozen) ? onChat : null,
-                    icon: Icon(Icons.chat_bubble_outline, size: 18, color: (isActive || isFrozen) ? Colors.white : Colors.grey),
+                    onPressed: isAssigned ? onChat : null,
+                    icon: Icon(
+                      Icons.chat_bubble_outline,
+                      size: 18,
+                      color: isAssigned ? Colors.white : Colors.grey,
+                    ),
                     label: Text(
-                      isFrozen ? 'View Chat' : (isActive ? 'Chat Now' : 'Chat Unavailable'),
+                      isFrozen
+                          ? 'View Chat'
+                          : (isActive ? 'Chat Now' : (isWaiting ? 'Waiting...' : 'Chat Unavailable')),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isFrozen
                           ? Colors.grey.shade400
-                          : (isActive ? AppColors.primary : Colors.grey),
+                          : (isActive ? AppColors.primary : Colors.grey.shade300),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ),
-                if (agentId != null && agentId.isNotEmpty && isActive) ...[
+                if (isAssigned && agentId != null && agentId.isNotEmpty && isActive) ...[
                   const SizedBox(width: 8),
                   SizedBox(
                     height: 44,
