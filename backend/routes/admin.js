@@ -69,8 +69,11 @@ router.get("/dashboard", async (req, res) => {
     const activeDeliveries = await Order.countDocuments({ status: "Out for Delivery" });
     const newCustomersToday = await User.countDocuments({ role: "customer", createdAt: { $gte: startOfDay } });
 
-    const activeRiders = await Rider.countDocuments({ isAvailable: true });
-    const totalRiders = await Rider.countDocuments();
+    const activeRidersFromRider = await Rider.countDocuments({ isAvailable: true });
+    const totalRidersFromRider = await Rider.countDocuments();
+    const totalRidersFromUser = await User.countDocuments({ role: "deliveryAgent" });
+    const activeRiders = activeRidersFromRider + Math.max(0, totalRidersFromUser - totalRidersFromRider);
+    const totalRiders = Math.max(totalRidersFromRider, totalRidersFromUser);
 
     const ratingAgg = await Review.aggregate([
       { $group: { _id: null, avg: { $avg: "$rating" } } },
@@ -484,10 +487,35 @@ router.get("/riders", async (req, res) => {
         ? await Order.countDocuments({ deliveryAgent: linkedUser._id, status: { $in: ["Out for Delivery", "On Route"] } })
         : 0;
       riderObj.syncedDeliveries = deliveryCount;
+      riderObj.source = "rider";
       return riderObj;
     }));
 
-    res.json(enriched);
+    const riderEmails = riders.map(r => r.email);
+
+    const userOnlyAgents = await User.find({
+      role: "deliveryAgent",
+      email: { $nin: riderEmails },
+    }).select("-password").sort({ createdAt: -1 });
+
+    const userAgents = await Promise.all(userOnlyAgents.map(async (user) => {
+      const userObj = user.toObject();
+      userObj.userId = user._id;
+      userObj.vehicleType = user.vehicleType || "Bike";
+      userObj.isAvailable = user.isAvailable !== false;
+      userObj.source = "user";
+
+      const deliveryCount = await Order.countDocuments({ deliveryAgent: user._id, status: "Delivered" });
+      userObj.activeDeliveries = await Order.countDocuments({
+        deliveryAgent: user._id,
+        status: { $in: ["Out for Delivery", "On Route"] },
+      });
+      userObj.syncedDeliveries = deliveryCount;
+      return userObj;
+    }));
+
+    const allRiders = [...enriched, ...userAgents].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(allRiders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

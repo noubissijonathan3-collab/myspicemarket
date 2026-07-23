@@ -18,6 +18,7 @@ class OrderTrackingScreen extends StatefulWidget {
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Map<String, dynamic>? _order;
   bool _isLoading = true;
+  String? _error;
   ChatRoomData? _prepChatRoom;
   ChatRoomData? _deliveryChatRoom;
 
@@ -47,11 +48,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       setState(() {
         _order = order;
         _isLoading = false;
+        _error = null;
       });
       _loadChatRooms();
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _error = e.toString();
+      });
     }
   }
 
@@ -195,7 +200,32 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _order == null
-              ? const Center(child: Text('Order not found'))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+                      const SizedBox(height: 16),
+                      Text('Order not found', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+                      if (_error != null) ...[
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(_error!, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() { _isLoading = true; _error = null; });
+                          _loadOrder();
+                        },
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(
