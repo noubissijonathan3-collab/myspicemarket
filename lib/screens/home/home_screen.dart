@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/home_provider.dart';
@@ -5,6 +6,8 @@ import '../../providers/user_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/favorite_provider.dart';
+import '../../services/call_service.dart';
+import '../call_screen.dart';
 import '../profile/profile_screen.dart';
 import '../meals/meals_screen.dart';
 import '../cart/cart_screen.dart';
@@ -32,11 +35,87 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final ScrollController _scrollController = ScrollController();
+  StreamSubscription<IncomingCallData>? _incomingCallSub;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _listenIncomingCalls();
+  }
+
+  void _listenIncomingCalls() {
+    _incomingCallSub = CallService.incomingCallStream.listen((call) {
+      if (!mounted) return;
+      _showIncomingCallDialog(call);
+    });
+  }
+
+  void _showIncomingCallDialog(IncomingCallData call) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(color: Color(0xFF198754), shape: BoxShape.circle),
+              child: const Icon(Icons.phone, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Incoming Call')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: AppColors.primaryContainer,
+              child: Text(
+                call.callerName.isNotEmpty ? call.callerName[0].toUpperCase() : '?',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(call.callerName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            if (call.orderId != null)
+              Text('Order #${call.orderId!.substring(0, 8)}', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              CallService.rejectCall(call.callerId);
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red),
+            child: const Text('Decline'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CallScreen(
+                    targetUserId: call.callerId,
+                    targetName: call.callerName,
+                    orderId: call.orderId ?? '',
+                    isIncoming: true,
+                    incomingCallData: call,
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF198754), foregroundColor: Colors.white),
+            child: const Text('Accept'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadData() async {
@@ -52,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _incomingCallSub?.cancel();
     _scrollController.dispose();
     super.dispose();
   }

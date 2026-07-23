@@ -3,8 +3,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
+import '../services/chat_service.dart';
 import 'call_screen.dart';
+import 'chat/chat_screen.dart';
 
 class CustomerTrackingScreen extends StatefulWidget {
   final String orderId;
@@ -49,12 +52,16 @@ class _CustomerTrackingScreenState extends State<CustomerTrackingScreen> {
     _connectSocket();
   }
 
-  void _connectSocket() {
+  void _connectSocket() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+
     _socket = IO.io(
       AppConfig.baseUrl,
       IO.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .enableAutoConnect()
+          .setAuth({'token': token ?? ''})
           .build(),
     );
 
@@ -106,6 +113,36 @@ class _CustomerTrackingScreenState extends State<CustomerTrackingScreen> {
     }
   }
 
+  void _openChat() async {
+    String? chatRoomId;
+    try {
+      final room = await ChatService.getChatRoom(widget.orderId);
+      if (room != null) {
+        chatRoomId = room['id'] ?? room['_id'];
+      }
+    } catch (_) {}
+
+    if (chatRoomId == null) {
+      try {
+        final room = await ChatService.createChatRoom(widget.orderId);
+        chatRoomId = room['id'] ?? room['_id'];
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          chatRoomId: chatRoomId ?? widget.orderId,
+          orderId: widget.orderId,
+          agentName: widget.agentName,
+          agentAvatar: '',
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _socket?.emit('tracking:leave', {'orderId': widget.orderId});
@@ -126,7 +163,7 @@ class _CustomerTrackingScreenState extends State<CustomerTrackingScreen> {
             color: Colors.blue,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 3),
-            boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.4), blurRadius: 12)],
+            boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.4), blurRadius: 12)],
           ),
           child: const Icon(Icons.delivery_dining, color: Colors.white, size: 22),
         ),
@@ -189,7 +226,7 @@ class _CustomerTrackingScreenState extends State<CustomerTrackingScreen> {
                   polylines: [
                     Polyline(
                       points: [_agentPos, _destination],
-                      color: Colors.blue.withOpacity(0.5),
+                      color: Colors.blue.withValues(alpha: 0.5),
                       strokeWidth: 3,
                     ),
                   ],
@@ -241,35 +278,34 @@ class _CustomerTrackingScreenState extends State<CustomerTrackingScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              if (widget.agentPhone.isNotEmpty)
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CallScreen(
-                            targetUserId: widget.agentId,
-                            targetName: widget.agentName,
-                            orderId: widget.orderId,
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.phone, size: 18),
-                    label: const Text('Call Driver'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF198754),
-                      side: const BorderSide(color: Color(0xFF198754)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              if (widget.agentPhone.isNotEmpty) const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CallScreen(
+                          targetUserId: widget.agentId,
+                          targetName: widget.agentName,
+                          orderId: widget.orderId,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.phone, size: 18),
+                  label: const Text('Call Driver'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF198754),
+                    side: const BorderSide(color: Color(0xFF198754)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _openChat,
                   icon: const Icon(Icons.chat, size: 18),
                   label: const Text('Message'),
                   style: OutlinedButton.styleFrom(
@@ -295,7 +331,7 @@ class _CustomerTrackingScreenState extends State<CustomerTrackingScreen> {
           Icon(icon, color: c, size: 20),
           const SizedBox(height: 4),
           Text(value, style: TextStyle(color: c, fontSize: 13, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text(label, style: TextStyle(color: c.withOpacity(0.6), fontSize: 10)),
+          Text(label, style: TextStyle(color: c.withValues(alpha: 0.6), fontSize: 10)),
         ],
       ),
     );

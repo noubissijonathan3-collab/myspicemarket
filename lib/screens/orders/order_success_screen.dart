@@ -141,7 +141,12 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> with SingleTick
       final room = await ChatService.createChatRoom(widget.orderId);
       if (!mounted) return;
       setState(() => _chatRoomId = room.id);
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatRoomId: room.id, orderId: widget.orderId)));
+      Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(
+        chatRoomId: room.id,
+        orderId: widget.orderId,
+        agentName: room.agentName.isNotEmpty ? room.agentName : 'Preparation Agent',
+        agentId: room.agentId ?? '',
+      )));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), behavior: SnackBarBehavior.floating));

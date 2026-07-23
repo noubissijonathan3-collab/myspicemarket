@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../../config/app_config.dart';
 import '../../services/chat_service.dart';
 import '../../utils/colors.dart';
+import '../call_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatRoomId;
   final String orderId;
   final String agentName;
   final String agentAvatar;
+  final String agentId;
 
   const ChatScreen({
     super.key,
@@ -16,6 +18,7 @@ class ChatScreen extends StatefulWidget {
     required this.orderId,
     this.agentName = 'Preparation Agent',
     this.agentAvatar = '',
+    this.agentId = '',
   });
 
   @override
@@ -214,7 +217,23 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-          IconButton(icon: const Icon(Icons.phone_outlined, size: 20), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.phone_outlined, size: 20),
+            onPressed: widget.agentId.isNotEmpty
+                ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CallScreen(
+                          targetUserId: widget.agentId,
+                          targetName: widget.agentName,
+                          orderId: widget.orderId,
+                        ),
+                      ),
+                    );
+                  }
+                : null,
+          ),
           IconButton(icon: const Icon(Icons.more_vert, size: 20), onPressed: () {}),
         ],
       ),

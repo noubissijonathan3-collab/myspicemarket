@@ -8,7 +8,7 @@ const setupSocket = (io) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.query.token;
       if (!token) return next(new Error("Authentication required"));
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || "myspicemarket_secret_key");
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "spicemarket_jwt_secret");
       const user = await User.findById(decoded.userId).select("-password");
       if (!user) return next(new Error("User not found"));
       socket.user = user;
@@ -19,9 +19,11 @@ const setupSocket = (io) => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`User connected: ${socket.user.fullName || socket.user.name || "Unknown"} (${socket.user._id})`);
+    console.log(`User connected: ${socket.user.fullName || socket.user.name || "Unknown"} (${socket.user._id}) role=${socket.user.role}`);
 
+    // Join a chat room by chatRoomId
     socket.on("join_chat", async ({ chatRoomId }) => {
+      if (!chatRoomId) return;
       socket.join(chatRoomId);
       await Message.updateMany(
         { chatRoomId, senderId: { $ne: socket.user._id }, read: false },
@@ -30,13 +32,75 @@ const setupSocket = (io) => {
       socket.to(chatRoomId).emit("user_online", { userId: socket.user._id.toString() });
     });
 
+    // Join a chat room by orderId — resolves orderId to chatRoomId
+    socket.on("join_order", async ({ orderId }) => {
+      if (!orderId) return;
+      try {
+        let room = await ChatRoom.findOne({ orderId });
+        if (!room) {
+          const isAgent = socket.user.role === "deliveryAgent" || socket.user.role === "preparationAgent" || socket.user.role === "admin";
+          room = await ChatRoom.create({
+            orderId,
+            customerId: isAgent ? null : socket.user._id,
+            agentId: isAgent ? socket.user._id : null,
+            agentName: isAgent ? (socket.user.fullName || "") : "",
+            agentAvatar: isAgent ? (socket.user.profileImage || "") : "",
+          });
+        } else {
+          const isAgent = socket.user.role === "deliveryAgent" || socket.user.role === "preparationAgent" || socket.user.role === "admin";
+          if (isAgent && !room.agentId) {
+            room.agentId = socket.user._id;
+            room.agentName = socket.user.fullName || "";
+            room.agentAvatar = socket.user.profileImage || "";
+            await room.save();
+          }
+        }
+        const chatRoomId = room._id.toString();
+        socket.join(chatRoomId);
+
+        socket.emit("chat_room_joined", {
+          chatRoomId,
+          orderId,
+          customerId: room.customerId,
+          agentId: room.agentId,
+          agentName: room.agentName,
+          agentAvatar: room.agentAvatar,
+          status: room.status,
+        });
+
+        await Message.updateMany(
+          { chatRoomId, senderId: { $ne: socket.user._id }, read: false },
+          { read: true, readAt: new Date() }
+        );
+        socket.to(chatRoomId).emit("user_online", { userId: socket.user._id.toString() });
+      } catch (err) {
+        console.error("join_order error:", err.message);
+        socket.emit("chat_error", { message: "Failed to join order chat" });
+      }
+    });
+
     socket.on("leave_chat", ({ chatRoomId }) => {
+      if (!chatRoomId) return;
       socket.leave(chatRoomId);
       socket.to(chatRoomId).emit("user_offline", { userId: socket.user._id.toString() });
     });
 
+    socket.on("leave_order", ({ orderId }) => {
+      if (!orderId) return;
+      ChatRoom.findOne({ orderId }).then((room) => {
+        if (room) {
+          socket.leave(room._id.toString());
+          socket.to(room._id.toString()).emit("user_offline", { userId: socket.user._id.toString() });
+        }
+      }).catch(() => {});
+    });
+
     socket.on("send_message", async ({ chatRoomId, message, type, fileUrl }, callback) => {
       try {
+        if (!chatRoomId) {
+          if (typeof callback === "function") callback({ error: "chatRoomId is required" });
+          return;
+        }
         const room = await ChatRoom.findById(chatRoomId);
         if (!room) {
           if (typeof callback === "function") callback({ error: "Chat room not found" });
@@ -47,7 +111,9 @@ const setupSocket = (io) => {
           return;
         }
 
-        const senderRole = socket.user.role === "admin" ? "agent" : "customer";
+        const isAgent = socket.user.role === "deliveryAgent" || socket.user.role === "preparationAgent" || socket.user.role === "admin";
+        const senderRole = isAgent ? "agent" : "customer";
+
         const msg = await Message.create({
           chatRoomId,
           senderId: socket.user._id,
@@ -67,14 +133,17 @@ const setupSocket = (io) => {
     });
 
     socket.on("typing", ({ chatRoomId, isTyping }) => {
+      if (!chatRoomId) return;
       socket.to(chatRoomId).emit("user_typing", {
         userId: socket.user._id.toString(),
         fullName: socket.user.fullName,
+        chatRoomId,
         isTyping,
       });
     });
 
     socket.on("mark_read", async ({ chatRoomId }) => {
+      if (!chatRoomId) return;
       await Message.updateMany(
         { chatRoomId, senderId: { $ne: socket.user._id }, read: false },
         { read: true, readAt: new Date() }
@@ -191,10 +260,10 @@ const setupSocket = (io) => {
           timestamp: new Date().toISOString(),
         };
 
-        io.emit("location:updated", locationData);
-
         if (orderId) {
           io.to("tracking_" + orderId).emit("agent:location", locationData);
+        } else {
+          io.emit("location:updated", locationData);
         }
       } catch (err) {
         console.error("Location update error:", err.message);

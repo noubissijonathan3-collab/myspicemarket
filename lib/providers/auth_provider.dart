@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
+import '../services/call_service.dart';
 
 class AuthProvider with ChangeNotifier {
   User? _user;
@@ -18,6 +19,7 @@ class AuthProvider with ChangeNotifier {
       _user = await AuthService.getProfile();
       if (_user != null) {
         ChatService.connect();
+        CallService.connect();
       }
       notifyListeners();
     } catch (_) {
@@ -35,6 +37,7 @@ class AuthProvider with ChangeNotifier {
       final data = await AuthService.login(email: email, password: password);
       _user = User.fromJson(data['user']);
       ChatService.connect();
+      CallService.connect();
       _isLoading = false;
       notifyListeners();
       return true;
@@ -65,6 +68,7 @@ class AuthProvider with ChangeNotifier {
       );
       _user = User.fromJson(data['user'] as Map<String, dynamic>);
       ChatService.connect();
+      CallService.connect();
       _isLoading = false;
       notifyListeners();
       return true;

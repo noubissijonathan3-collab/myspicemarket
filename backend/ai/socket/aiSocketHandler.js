@@ -11,8 +11,8 @@ const setupAiSocket = (io) => {
     try {
       const jwt = require("jsonwebtoken");
       const User = require("../../models/User");
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || "myspicemarket_secret_key");
-      const user = await User.findById(decoded.userId || decoded.id).select("-password");
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "spicemarket_jwt_secret");
+      const user = await User.findById(decoded.userId).select("-password");
       if (!user) return next(new Error("User not found"));
       socket.user = user;
       next();

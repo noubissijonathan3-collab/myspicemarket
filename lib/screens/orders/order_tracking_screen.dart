@@ -103,6 +103,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           orderId: widget.orderId,
           agentName: _chatRoom!.agentName.isNotEmpty ? _chatRoom!.agentName : 'Preparation Agent',
           agentAvatar: _chatRoom!.agentAvatar,
+          agentId: _chatRoom!.agentId ?? '',
         ),
       ),
     );

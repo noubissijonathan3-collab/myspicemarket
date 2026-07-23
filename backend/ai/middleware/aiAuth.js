@@ -9,8 +9,8 @@ exports.aiProtect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "myspicemarket_secret_key");
-    const user = await User.findById(decoded.userId || decoded.id).select("-password");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "spicemarket_jwt_secret");
+    const user = await User.findById(decoded.userId).select("-password");
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
