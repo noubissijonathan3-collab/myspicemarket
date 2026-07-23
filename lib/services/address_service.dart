@@ -12,7 +12,7 @@ class AddressService {
     final response = await http.get(
       Uri.parse(baseUrl),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       final List list = data is List ? data : (data['addresses'] ?? []);
@@ -26,7 +26,7 @@ class AddressService {
     final response = await http.get(
       Uri.parse('$baseUrl/default'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode == 200 && response.body.isNotEmpty) {
       final data = jsonDecode(response.body);
       if (data != null && data is Map && data.isNotEmpty) {
@@ -45,7 +45,7 @@ class AddressService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(address.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 201) return AddressModel.fromJson(data);
     throw data['message'] ?? 'Failed to create address';
@@ -60,7 +60,7 @@ class AddressService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(address.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) return AddressModel.fromJson(data);
     throw data['message'] ?? 'Failed to update address';

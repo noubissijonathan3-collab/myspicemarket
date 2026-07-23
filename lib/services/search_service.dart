@@ -11,7 +11,7 @@ class SearchService {
       'search': query,
       'limit': '10',
     });
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       final products = (data['products'] as List).map((e) => Product.fromJson(e)).toList();

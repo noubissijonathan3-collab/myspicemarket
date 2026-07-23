@@ -20,7 +20,7 @@ class SettingsService {
     final response = await http.get(
       Uri.parse(baseUrl),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       return UserSettingsModel.fromJson(data is Map ? data : data['settings'] ?? {});
@@ -37,7 +37,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(settings.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       return UserSettingsModel.fromJson(data is Map ? data : data['settings'] ?? {});
@@ -54,7 +54,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(theme.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to update theme';
@@ -70,7 +70,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(lang.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to update language';
@@ -86,7 +86,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(notif.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to update notifications';
@@ -102,7 +102,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(privacy.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to update privacy';
@@ -118,7 +118,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(security.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to update security';
@@ -134,7 +134,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(ai.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to update AI settings';
@@ -150,7 +150,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(delivery.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to update delivery preferences';
@@ -166,7 +166,7 @@ class SettingsService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(acc.toJson()),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to update accessibility settings';
@@ -178,7 +178,7 @@ class SettingsService {
     final response = await http.delete(
       Uri.parse('$baseUrl/cache'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       return data is Map ? Map<String, dynamic>.from(data) : {};

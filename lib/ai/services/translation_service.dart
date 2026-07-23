@@ -22,7 +22,7 @@ class TranslationService {
         Uri.parse('$_baseUrl/translate'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
         body: jsonEncode({'text': text, 'targetLanguage': targetLanguage, 'sourceLanguage': sourceLanguage, 'contextType': contextType}),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 60));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);

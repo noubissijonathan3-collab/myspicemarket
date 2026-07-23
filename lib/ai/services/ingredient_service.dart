@@ -15,7 +15,7 @@ class IngredientService {
       Uri.parse('$_baseUrl/substitute'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'ingredient': ingredient}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);

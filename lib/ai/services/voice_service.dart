@@ -15,7 +15,7 @@ class VoiceService {
       Uri.parse('$_baseUrl/process'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'transcript': transcript}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
 
     if (res.statusCode == 200) return VoiceCommand.fromJson(jsonDecode(res.body));
     throw Exception('Voice processing failed');

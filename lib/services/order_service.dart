@@ -11,7 +11,7 @@ class OrderService {
     final response = await http.get(
       Uri.parse(baseUrl),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       return (data as List).cast<Map<String, dynamic>>();
@@ -24,7 +24,7 @@ class OrderService {
     final response = await http.get(
       Uri.parse('$baseUrl/$id'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) return data;
     throw data['message'] ?? 'Failed to fetch order';
@@ -42,7 +42,7 @@ class OrderService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode({'items': items, 'delivery': delivery ?? {}}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 201) return data;
     throw data['message'] ?? 'Failed to create order';

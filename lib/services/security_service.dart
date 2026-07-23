@@ -19,7 +19,7 @@ class SecurityService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode({'password': password}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       return data['valid'] ?? false;
@@ -32,7 +32,7 @@ class SecurityService {
     final response = await http.post(
       Uri.parse('${AppConfig.baseUrl}/api/auth/logout-all'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to logout all devices';

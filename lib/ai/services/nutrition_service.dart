@@ -32,7 +32,7 @@ class NutritionService {
     final res = await http.get(
       Uri.parse('$_baseUrl/history'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
 
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);

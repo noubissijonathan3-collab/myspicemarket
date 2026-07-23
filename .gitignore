@@ -48,7 +48,6 @@ app.*.map.json
 # Environment variables
 .env
 node_modules/
-uploads/
 logs/
 *.log
 npm-debug.log

@@ -12,7 +12,7 @@ class FavoriteService {
     final response = await http.get(
       Uri.parse(baseUrl),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       final List list = data is List ? data : (data['favorites'] ?? []);
@@ -36,7 +36,7 @@ class FavoriteService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode({'mealId': mealId}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode == 200 || response.statusCode == 201) return true;
     final data = _tryDecode(response.body);
     throw data['message'] ?? 'Failed to add favorite';
@@ -48,7 +48,7 @@ class FavoriteService {
     final response = await http.delete(
       Uri.parse('$baseUrl/$mealId'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode == 200 || response.statusCode == 204) return true;
     final data = _tryDecode(response.body);
     throw data['message'] ?? 'Failed to remove favorite';

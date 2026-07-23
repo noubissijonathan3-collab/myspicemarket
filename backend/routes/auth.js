@@ -45,7 +45,7 @@ router.post("/register", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET || "myspicemarket_secret_key",
+      process.env.JWT_SECRET || "spicemarket_jwt_secret",
       { expiresIn: "7d" },
     );
 
@@ -101,7 +101,7 @@ router.post("/login", async (req, res) => {
       {
         userId: user._id,
       },
-      process.env.JWT_SECRET || "myspicemarket_secret_key",
+      process.env.JWT_SECRET || "spicemarket_jwt_secret",
       {
         expiresIn: "7d",
       },
@@ -412,7 +412,7 @@ router.post("/admin/login", async (req, res) => {
     }
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET || "myspicemarket_secret_key",
+      process.env.JWT_SECRET || "spicemarket_jwt_secret",
       { expiresIn: "7d" }
     );
     res.json({

@@ -1,6 +1,6 @@
 class AppConfig {
   // CHANGE ONLY THIS WHEN NETWORK CHANGES
-  static const String baseUrl = "http://10.250.116.101:5000";
+  static const String baseUrl = "https://myspicemarket.onrender.com";
 }
 /*
 *

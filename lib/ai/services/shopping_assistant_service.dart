@@ -43,7 +43,7 @@ class ShoppingAssistantService {
     final res = await http.get(
       Uri.parse('$_baseUrl/add-ons/$orderId'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);

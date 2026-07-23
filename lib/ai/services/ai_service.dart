@@ -27,7 +27,7 @@ class AiService {
     final res = await http.get(
       Uri.parse('$_baseUrl/conversations'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
 
     if (res.statusCode == 200) return jsonDecode(res.body);
     throw Exception('Failed to load conversations');
@@ -40,7 +40,7 @@ class AiService {
     final res = await http.get(
       Uri.parse('$_baseUrl/conversations/$id'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
 
     if (res.statusCode == 200) return jsonDecode(res.body);
     throw Exception('Failed to load conversation');
@@ -53,6 +53,6 @@ class AiService {
     await http.delete(
       Uri.parse('$_baseUrl/conversations/$id'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
   }
 }

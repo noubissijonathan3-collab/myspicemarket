@@ -36,7 +36,7 @@ class ProductService {
     if (popular == true) params['popular'] = 'true';
 
     final uri = Uri.parse(_mealBase).replace(queryParameters: params);
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
@@ -65,7 +65,7 @@ class ProductService {
     if (search != null && search.isNotEmpty) params['search'] = search;
 
     final uri = Uri.parse(_foodstuffBase).replace(queryParameters: params);
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
@@ -81,7 +81,7 @@ class ProductService {
   }
 
   static Future<List<Product>> fetchPopularMeals() async {
-    final response = await http.get(Uri.parse('$_mealBase/popular')).timeout(const Duration(seconds: 15));
+    final response = await http.get(Uri.parse('$_mealBase/popular')).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       final meals = data['meals'] as List;
@@ -91,7 +91,7 @@ class ProductService {
   }
 
   static Future<List<Product>> fetchPopularGroceries() async {
-    final response = await http.get(Uri.parse('$_foodstuffBase/popular')).timeout(const Duration(seconds: 15));
+    final response = await http.get(Uri.parse('$_foodstuffBase/popular')).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       final items = data['products'] as List;
@@ -101,7 +101,7 @@ class ProductService {
   }
 
   static Future<Product> fetchProductById(String id) async {
-    final response = await http.get(Uri.parse('$_mealBase/$id')).timeout(const Duration(seconds: 15));
+    final response = await http.get(Uri.parse('$_mealBase/$id')).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) return Product.fromMealJson(data);
     throw data['message'] ?? 'Product not found';

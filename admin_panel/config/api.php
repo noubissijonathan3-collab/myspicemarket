@@ -5,8 +5,8 @@
  * Base URL and endpoint helpers for the Node.js + Express backend.
  */
 
-define('API_BASE_URL', 'http://localhost:5000/api');
-define('API_BACKEND_URL', 'http://localhost:5000');
+define('API_BASE_URL', 'https://myspicemarket.onrender.com/api');
+define('API_BACKEND_URL', 'https://myspicemarket.onrender.com');
 
 /* ─── Auth Endpoints ──────────────────────────────────── */
 define('API_AUTH_ADMIN_LOGIN',    API_BASE_URL . '/auth/admin/login');

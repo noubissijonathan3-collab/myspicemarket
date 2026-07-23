@@ -7,7 +7,7 @@ class BannerService {
   static const String baseUrl = '${AppConfig.baseUrl}/api/banners';
 
   static Future<List<BannerModel>> fetchBanners() async {
-    final response = await http.get(Uri.parse(baseUrl)).timeout(const Duration(seconds: 15));
+    final response = await http.get(Uri.parse(baseUrl)).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       final List list = data is List ? data : (data['banners'] ?? []);

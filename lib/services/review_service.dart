@@ -8,7 +8,7 @@ class ReviewService {
   static const String baseUrl = '${AppConfig.baseUrl}/api/reviews';
 
   static Future<List<Review>> fetchReviews({int limit = 10}) async {
-    final response = await http.get(Uri.parse('$baseUrl?limit=$limit')).timeout(const Duration(seconds: 15));
+    final response = await http.get(Uri.parse('$baseUrl?limit=$limit')).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       final List list = data['reviews'] ?? [];
@@ -32,7 +32,7 @@ class ReviewService {
     if (hasPhotos == true) params['hasPhotos'] = 'true';
 
     final uri = Uri.parse('$baseUrl/meal/$mealId').replace(queryParameters: params);
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       final List list = data['reviews'] ?? [];
@@ -48,7 +48,7 @@ class ReviewService {
   }
 
   static Future<Review> fetchReview(String id) async {
-    final response = await http.get(Uri.parse('$baseUrl/$id')).timeout(const Duration(seconds: 15));
+    final response = await http.get(Uri.parse('$baseUrl/$id')).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) return Review.fromJson(data);
     throw data['message'] ?? 'Failed to fetch review';
@@ -80,7 +80,7 @@ class ReviewService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(body),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 201) return Review.fromJson(data);
     throw data['message'] ?? 'Failed to create review';
@@ -109,7 +109,7 @@ class ReviewService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(body),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) return Review.fromJson(data);
     throw data['message'] ?? 'Failed to update review';
@@ -120,7 +120,7 @@ class ReviewService {
     final response = await http.delete(
       Uri.parse('$baseUrl/$id'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to delete review';
@@ -132,7 +132,7 @@ class ReviewService {
     final response = await http.post(
       Uri.parse('$baseUrl/$reviewId/helpful'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) return data;
     throw data['message'] ?? 'Failed to toggle helpful';
@@ -144,7 +144,7 @@ class ReviewService {
     final response = await http.get(
       Uri.parse('$baseUrl/$reviewId/helpful-status'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data['helpful'] ?? false;
@@ -157,7 +157,7 @@ class ReviewService {
     final response = await http.post(
       Uri.parse('$baseUrl/$reviewId/report'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to report review';

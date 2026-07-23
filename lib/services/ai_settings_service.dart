@@ -15,7 +15,7 @@ class AiSettingsService {
     final response = await http.delete(
       Uri.parse('${AppConfig.baseUrl}/api/ai/conversations'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw data['message'] ?? 'Failed to clear AI history';

@@ -19,7 +19,7 @@ class AuthService {
       Uri.parse('$baseUrl/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'fullName': fullName, 'email': email, 'phone': phone, 'password': password}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200 || response.statusCode == 201) {
       await _saveToken(data['token']);
@@ -37,7 +37,7 @@ class AuthService {
       Uri.parse('$baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       await _saveToken(data['token']);
@@ -54,7 +54,7 @@ class AuthService {
       final response = await http.get(
         Uri.parse('$baseUrl/me'),
       headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final userData = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
@@ -77,7 +77,7 @@ class AuthService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(updates),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       await _saveUser(data['user'] is Map ? data['user'] as Map<String, dynamic> : data);
@@ -160,7 +160,7 @@ class AuthService {
       Uri.parse('$baseUrl/find-account'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': identifier}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) return data;
     throw data['message'] ?? 'Account not found';
@@ -171,7 +171,7 @@ class AuthService {
       Uri.parse('$baseUrl/forgot-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': identifier, 'method': method}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode != 200) throw data['message'] ?? 'Failed to send code';
   }
@@ -181,7 +181,7 @@ class AuthService {
       Uri.parse('$baseUrl/send-verification-otp'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode != 200) throw data['message'] ?? 'Failed to send verification code';
   }
@@ -191,7 +191,7 @@ class AuthService {
       Uri.parse('$baseUrl/verify-otp'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': identifier, 'otp': otp}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode != 200) throw data['message'] ?? 'Invalid OTP';
   }
@@ -201,7 +201,7 @@ class AuthService {
       Uri.parse('$baseUrl/reset-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': identifier, 'password': newPassword}),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 60));
     final data = jsonDecode(response.body);
     if (response.statusCode != 200) throw data['message'] ?? 'Reset failed';
   }

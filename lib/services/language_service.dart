@@ -12,7 +12,7 @@ class LanguageService {
       final response = await http.get(
         Uri.parse('${AppConfig.baseUrl}/api/languages'),
         headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List list = data is List ? data : (data['languages'] ?? []);

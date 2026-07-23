@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "891377810648",
+    "project_id": "my-spicemarket-f9f28",
+    "storage_bucket": "my-spicemarket-f9f28.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:891377810648:android:4e49e6764f0f41ca29ebad",
+        "android_client_info": {
+          "package_name": "com.example.myspicemarket"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5XThkGE-R1pqnwX0gdmDa_lW-gEygbNQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
