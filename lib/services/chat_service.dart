@@ -91,6 +91,8 @@ class ChatService {
   static void Function(String userId)? onUserOnline;
   static void Function(String userId)? onUserOffline;
   static void Function(String userId)? onMessagesRead;
+  static void Function(Map<String, dynamic> notification)? onNotificationReceived;
+  static void Function(int count)? onUnreadCountChanged;
 
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -209,6 +211,14 @@ class ChatService {
 
     _socket!.on('messages_read', (data) {
       onMessagesRead?.call(data['userId']);
+    });
+
+    _socket!.on('notification:new', (data) {
+      onNotificationReceived?.call(Map<String, dynamic>.from(data));
+    });
+
+    _socket!.on('notification:unread_count', (data) {
+      onUnreadCountChanged?.call(data['count'] ?? 0);
     });
 
     _socket!.on('disconnect', (_) {

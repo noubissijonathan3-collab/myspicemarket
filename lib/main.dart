@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:device_preview_plus/device_preview_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 
 import 'providers/user_provider.dart';
@@ -32,6 +33,8 @@ import 'ai/providers/nutrition_provider.dart';
 import 'ai/providers/shopping_provider.dart';
 import 'ai/providers/translation_provider.dart';
 import 'ai/providers/voice_provider.dart';
+import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/meals/meals_screen.dart';
@@ -44,8 +47,16 @@ import 'ai/screens/meal_planner_screen.dart';
 import 'ai/screens/budget_planner_screen.dart';
 import 'ai/screens/nutrition_screen.dart';
 import 'ai/screens/recipe_generator_screen.dart';
+import 'screens/notifications/notifications_screen.dart';
 import 'utils/colors.dart';
 import 'l10n/app_localizations.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +66,9 @@ void main() async {
       await Firebase.initializeApp(options: options);
     } catch (_) {}
   }
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   runApp(
     DevicePreview(
       enabled: kIsWeb && !kReleaseMode,
@@ -93,8 +107,72 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _setupFirebaseMessaging();
+  }
+
+  void _setupFirebaseMessaging() async {
+    final messaging = FirebaseMessaging.instance;
+
+    const settings = NotificationSettings(
+      alert: AppleNotificationSetting.enabled,
+      badge: AppleNotificationSetting.enabled,
+      sound: AppleNotificationSetting.enabled,
+    );
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+    final token = await messaging.getToken();
+    if (token != null) {
+      try {
+        final authService = AuthService();
+        await NotificationService.registerFcmToken(token);
+      } catch (_) {}
+    }
+
+    messaging.onTokenRefresh.listen((token) {
+      NotificationService.registerFcmToken(token).catch((_) {});
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final notification = message.notification;
+      if (notification != null && navigatorKey.currentContext != null) {
+        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+          SnackBar(
+            content: Text(notification.body ?? notification.title ?? 'New notification'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                final orderId = message.data['orderId'];
+                if (orderId != null && orderId.isNotEmpty) {
+                  Navigator.pushNamed(navigatorKey.currentContext!, '/notifications');
+                }
+              },
+            ),
+          ),
+        );
+      }
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      final orderId = message.data['orderId'];
+      if (orderId != null && orderId.isNotEmpty && navigatorKey.currentContext != null) {
+        Navigator.pushNamed(navigatorKey.currentContext!, '/notifications');
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +229,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const SplashScreen(),
+      navigatorKey: navigatorKey,
       routes: {
         '/meals': (_) => const MealsScreen(),
         '/grocery': (_) => const GroceryScreen(),
@@ -163,6 +242,7 @@ class MyApp extends StatelessWidget {
         '/ai/budget-planner': (_) => const BudgetPlannerScreen(),
         '/ai/nutrition': (_) => const NutritionScreen(),
         '/ai/recipe-generator': (_) => const RecipeGeneratorScreen(),
+        '/notifications': (_) => const NotificationsScreen(),
       },
     );
   }

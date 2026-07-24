@@ -271,11 +271,16 @@ router.put("/orders/:id/deliver", deliveryOnly, async (req, res) => {
 
     // Notify customer
     await Notification.create({
-      userId: order.userId,
+      user: order.userId,
+      recipientRole: "customer",
       title: "Order Delivered",
       message: `Your order #${order._id.toString().slice(-6).toUpperCase()} has been delivered successfully!`,
-      type: "delivery_update",
-      data: { orderId: order._id.toString(), status: "Delivered" },
+      type: "DELIVERY",
+      category: "deliveries",
+      priority: "medium",
+      orderId: order._id,
+      actionType: "view_order",
+      metadata: { status: "Delivered" },
     });
 
     const updated = await Order.findById(order._id)
@@ -307,11 +312,16 @@ router.put("/orders/:id/fail", deliveryOnly, async (req, res) => {
     await order.save();
 
     await Notification.create({
-      userId: order.userId,
+      user: order.userId,
+      recipientRole: "customer",
       title: "Delivery Failed",
       message: `Your order #${order._id.toString().slice(-6).toUpperCase()} could not be delivered. ${reason || ""}`,
-      type: "delivery_update",
-      data: { orderId: order._id.toString(), status: "Cancelled" },
+      type: "DELIVERY",
+      category: "deliveries",
+      priority: "high",
+      orderId: order._id,
+      actionType: "view_order",
+      metadata: { status: "Cancelled", reason: reason || "" },
     });
 
     const updated = await Order.findById(order._id)
@@ -670,11 +680,16 @@ router.get("/earnings", deliveryOnly, async (req, res) => {
 
 router.get("/notifications", agentOnly, async (req, res) => {
   try {
-    const notifications = await Notification.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
-      .limit(50);
+    const { category, unreadOnly, limit = 50 } = req.query;
+    const query = { user: req.user._id };
+    if (category) query.category = category;
+    if (unreadOnly === "true") query.isRead = false;
 
-    const unreadCount = await Notification.countDocuments({ userId: req.user._id, isRead: false });
+    const notifications = await Notification.find(query)
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit));
+
+    const unreadCount = await Notification.countDocuments({ user: req.user._id, isRead: false });
 
     res.json({ notifications, unreadCount });
   } catch (error) {
@@ -684,7 +699,10 @@ router.get("/notifications", agentOnly, async (req, res) => {
 
 router.put("/notifications/:id/read", agentOnly, async (req, res) => {
   try {
-    await Notification.findByIdAndUpdate(req.params.id, { $set: { isRead: true } });
+    await Notification.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { isRead: true, readAt: new Date() }
+    );
     res.json({ message: "Marked as read" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -693,8 +711,12 @@ router.put("/notifications/:id/read", agentOnly, async (req, res) => {
 
 router.put("/notifications/read-all", agentOnly, async (req, res) => {
   try {
-    await Notification.updateMany({ userId: req.user._id, isRead: false }, { $set: { isRead: true } });
-    res.json({ message: "All notifications marked as read" });
+    await Notification.updateMany(
+      { user: req.user._id, isRead: false },
+      { isRead: true, readAt: new Date() }
+    );
+    const unreadCount = await Notification.countDocuments({ user: req.user._id, isRead: false });
+    res.json({ message: "All notifications marked as read", unreadCount });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -702,7 +724,7 @@ router.put("/notifications/read-all", agentOnly, async (req, res) => {
 
 router.delete("/notifications/:id", agentOnly, async (req, res) => {
   try {
-    await Notification.findByIdAndDelete(req.params.id);
+    await Notification.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     res.json({ message: "Notification deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });

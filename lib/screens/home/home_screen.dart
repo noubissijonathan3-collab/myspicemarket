@@ -6,6 +6,7 @@ import '../../providers/user_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/favorite_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/call_service.dart';
 import '../call_screen.dart';
 import '../profile/profile_screen.dart';
@@ -120,11 +121,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final notifProvider = context.read<NotificationProvider>();
+    notifProvider.attachRealtimeListeners(auth.notificationStream, auth.unreadCountStream);
     await Future.wait([
       context.read<UserProvider>().loadProfile(),
       context.read<HomeProvider>().loadHomeData(),
       context.read<CartProvider>().loadCart(),
-      context.read<NotificationProvider>().loadNotifications(),
+      notifProvider.loadNotifications(refresh: true),
       context.read<FavoriteProvider>().loadFavorites(),
     ]);
   }

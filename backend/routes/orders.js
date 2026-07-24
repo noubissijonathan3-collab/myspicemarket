@@ -4,6 +4,7 @@ const router = express.Router();
 const Order = require("../models/Order");
 const OrderItem = require("../models/OrderItem");
 const { protect: authMiddleware } = require("../middleware/auth");
+const { notifyOrderStatusChange, createNotification } = require("../utils/notify");
 
 function generateDeliveryPin() {
   return String(crypto.randomInt(1000, 9999));
@@ -98,6 +99,21 @@ router.post("/", authMiddleware, async (req, res) => {
 
     const safeOrder = orderToSafe(savedOrder);
     safeOrder.deliveryPin = deliveryPin;
+
+    await createNotification({
+      userId: req.user._id,
+      recipientRole: "customer",
+      title: "Order Placed Successfully",
+      message: `Your order has been placed and is pending confirmation.`,
+      type: "ORDER",
+      category: "orders",
+      priority: "medium",
+      orderId: savedOrder._id,
+      actionLink: `/orders/${savedOrder._id}`,
+      actionType: "view_order",
+      metadata: { orderNumber: savedOrder._id, total },
+    });
+
     res.status(201).json({ order: safeOrder });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -129,11 +145,16 @@ router.put("/:id/status", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Use the verify-delivery endpoint to complete delivery" });
     }
 
+    const oldStatus = order.status;
     order.status = status;
     if (status === "Out for Delivery") {
       order.deliveryTime = new Date();
     }
     const updated = await order.save();
+
+    const fullOrder = await Order.findById(order._id);
+    await notifyOrderStatusChange(fullOrder, oldStatus, status);
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -173,6 +194,19 @@ router.post("/:id/verify-delivery", authMiddleware, async (req, res) => {
       if (order.deliveryPinAttempts >= 5) {
         order.deliveryPinLocked = true;
         await order.save();
+
+        await createNotification({
+          userId: order.userId,
+          recipientRole: "customer",
+          title: "Delivery Verification Locked",
+          message: "Too many failed PIN attempts. Please contact admin for delivery verification.",
+          type: "DELIVERY",
+          category: "deliveries",
+          priority: "critical",
+          orderId: order._id,
+          actionType: "view_order",
+        });
+
         return res.status(423).json({
           message: "Too many failed attempts. Verification locked. Contact admin.",
           attempts: order.deliveryPinAttempts,
@@ -196,6 +230,8 @@ router.post("/:id/verify-delivery", authMiddleware, async (req, res) => {
       order.deliveryCompletedGps = { latitude, longitude };
     }
     await order.save();
+
+    await notifyOrderStatusChange(order, "Out for Delivery", "Delivered");
 
     res.json({
       message: "Delivery verified successfully",

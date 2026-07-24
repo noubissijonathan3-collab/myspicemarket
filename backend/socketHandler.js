@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("./models/User");
 const ChatRoom = require("./models/ChatRoom");
 const Message = require("./models/Message");
+const { notifyChatMessage } = require("./utils/notify");
 
 const setupSocket = (io) => {
   io.use(async (socket, next) => {
@@ -131,6 +132,30 @@ const setupSocket = (io) => {
 
         io.to(chatRoomId).emit("new_message", populated);
         if (typeof callback === "function") callback({ success: true, message: populated });
+
+        try {
+          const isAgentSender = senderRole === "agent";
+          const recipients = isAgentSender
+            ? [{ userId: room.customerId, role: "customer" }]
+            : room.agentId
+              ? [{ userId: room.agentId, role: "preparationAgent" }]
+              : [];
+
+          for (const r of recipients) {
+            if (r.userId && r.userId.toString() !== socket.user._id.toString()) {
+              const preview = (message || "").substring(0, 80);
+              await notifyChatMessage({
+                recipientId: r.userId,
+                recipientRole: r.role,
+                senderName: socket.user.fullName || "User",
+                senderRole,
+                orderId: room.orderId,
+                agentType: room.agentType,
+                messagePreview: preview,
+              });
+            }
+          }
+        } catch (_) {}
       } catch (err) {
         if (typeof callback === "function") callback({ error: err.message });
       }

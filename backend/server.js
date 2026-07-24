@@ -35,6 +35,10 @@ const languageRoutes = require("./routes/languages");
 const adminRoutes = require("./routes/admin");
 const agentRoutes = require("./routes/agent");
 const deliveryTrackingRoutes = require("./routes/deliveryTracking");
+const { initializeFirebase, sendPushNotification } = require("./utils/push");
+const { setSocketIO, setPushSender } = require("./utils/notify");
+const fcmRoutes = require("./routes/fcm");
+const fcmTokenRoutes = require("./routes/fcm");
 const setupSocket = require("./socketHandler");
 const setupAiSocket = require("./ai/socket/aiSocketHandler");
 
@@ -90,9 +94,13 @@ app.use("/api/languages", languageRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/agent", agentRoutes);
 app.use("/api/tracking", deliveryTrackingRoutes);
+app.use("/api/fcm", fcmTokenRoutes);
 
 setupSocket(io);
 setupAiSocket(io);
+
+setSocketIO(io);
+setPushSender(sendPushNotification);
 
 app.use((req, res) => {
   res.status(404).json({
@@ -117,6 +125,7 @@ if (!process.env.MONGO_URI) {
     .connect(process.env.MONGO_URI)
     .then(() => {
       console.log("MongoDB Connected");
+      initializeFirebase();
       server.listen(PORT, "0.0.0.0", () => {
         console.log(`Server running on port ${PORT}`);
       });

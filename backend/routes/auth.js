@@ -8,6 +8,7 @@ const { profileUpload } = require("../middleware/upload");
 const { generateOTP } = require("../utils/otpGenerator");
 const { sendOTPEmail } = require("../utils/emailService");
 const { sendOTPSMS } = require("../utils/smsService");
+const { notifyNewUser, createNotification } = require("../utils/notify");
 
 const router = express.Router();
 
@@ -42,6 +43,8 @@ router.post("/register", async (req, res) => {
     });
 
     await user.save();
+
+    notifyNewUser(user).catch(() => {});
 
     const token = jwt.sign(
       { userId: user._id },

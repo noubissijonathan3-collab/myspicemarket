@@ -85,10 +85,38 @@ include __DIR__ . '/../../includes/loader.php';
                         <div class="mb-3">
                             <label class="form-label">Notification Type</label>
                             <select class="form-select" id="notifType">
-                                <option value="push">Push Notification</option>
-                                <option value="email">Email</option>
-                                <option value="sms">SMS</option>
+                                <option value="SYSTEM">System</option>
+                                <option value="ORDER">Order</option>
+                                <option value="DELIVERY">Delivery</option>
+                                <option value="PROMOTION">Promotion</option>
+                                <option value="ACCOUNT">Account</option>
+                                <option value="SECURITY">Security</option>
+                                <option value="INVENTORY">Inventory</option>
                             </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Category</label>
+                                <select class="form-select" id="notifCategory">
+                                    <option value="promotions">Promotions</option>
+                                    <option value="system">System</option>
+                                    <option value="orders">Orders</option>
+                                    <option value="deliveries">Deliveries</option>
+                                    <option value="account">Account</option>
+                                    <option value="security">Security</option>
+                                    <option value="inventory">Inventory</option>
+                                </select>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Priority</label>
+                                <select class="form-select" id="notifPriority">
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -272,7 +300,7 @@ function sendNotification(e) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
 
-    var data = { title: title, message: message, type: document.getElementById('notifType').value };
+    var data = { title: title, message: message, type: document.getElementById('notifType').value, category: document.getElementById('notifCategory').value, priority: document.getElementById('notifPriority').value };
 
     if (mode === 'specific') {
         var sel = document.getElementById('userSelect');

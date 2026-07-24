@@ -1080,7 +1080,7 @@ router.delete("/favorites/:id", async (req, res) => {
 router.get("/notifications", async (req, res) => {
   try {
     const notifications = await Notification.find()
-      .populate("userId", "fullName email")
+      .populate("user", "fullName email role")
       .sort({ createdAt: -1 })
       .limit(100);
     res.json(notifications);
@@ -1091,7 +1091,7 @@ router.get("/notifications", async (req, res) => {
 
 router.post("/notifications", async (req, res) => {
   try {
-    const { title, message, type, broadcast, userId, scheduledAt, data } = req.body;
+    const { title, message, type, category, priority, broadcast, userId, userIds, data } = req.body;
     if (!title || !message) {
       return res.status(400).json({ message: "Title and message are required" });
     }
@@ -1099,15 +1099,16 @@ router.post("/notifications", async (req, res) => {
     const created = [];
 
     if (broadcast !== false) {
-      const users = await User.find({ role: "customer" }).select("_id");
+      const users = await User.find({ role: { $in: ["customer", "preparationAgent", "deliveryAgent"] } }).select("_id");
       const docs = users.map((u) => ({
-        userId: u._id,
+        user: u._id,
+        recipientRole: "all",
         title,
         message,
-        type: type || "push",
-        broadcast: true,
-        scheduledAt: scheduledAt || null,
-        data: data || null,
+        type: type || "SYSTEM",
+        category: category || "promotions",
+        priority: priority || "medium",
+        metadata: data || null,
         sentBy: req.user._id,
       }));
       if (docs.length > 0) {
@@ -1116,19 +1117,25 @@ router.post("/notifications", async (req, res) => {
       }
       res.json({ message: "Notification broadcast to " + users.length + " users", count: users.length, data: created[0] || null });
     } else {
-      if (!userId) return res.status(400).json({ message: "userId is required for direct notifications" });
-      const notif = await Notification.create({
-        userId,
-        title,
-        message,
-        type: type || "push",
-        broadcast: false,
-        scheduledAt: scheduledAt || null,
-        data: data || null,
-        sentBy: req.user._id,
-      });
-      created.push(notif);
-      res.json({ message: "Notification sent", count: 1, data: notif });
+      const targetUserIds = userIds || (userId ? [userId] : []);
+      if (targetUserIds.length === 0) {
+        return res.status(400).json({ message: "userId or userIds is required for direct notifications" });
+      }
+      for (const uid of targetUserIds) {
+        const notif = await Notification.create({
+          user: uid,
+          recipientRole: "customer",
+          title,
+          message,
+          type: type || "SYSTEM",
+          category: category || "promotions",
+          priority: priority || "medium",
+          metadata: data || null,
+          sentBy: req.user._id,
+        });
+        created.push(notif);
+      }
+      res.json({ message: "Notification sent", count: created.length, data: created[0] || null });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
