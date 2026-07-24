@@ -1,8 +1,24 @@
 const express = require("express");
+const crypto = require("crypto");
 const router = express.Router();
 const Order = require("../models/Order");
 const OrderItem = require("../models/OrderItem");
 const { protect: authMiddleware } = require("../middleware/auth");
+
+function generateDeliveryPin() {
+  return String(crypto.randomInt(1000, 9999));
+}
+
+function maskPin(pin) {
+  if (!pin) return "";
+  return "XXXX";
+}
+
+function orderToSafe(order) {
+  const obj = typeof order.toObject === "function" ? order.toObject() : { ...order };
+  if (obj.deliveryPin) obj.deliveryPin = maskPin(obj.deliveryPin);
+  return obj;
+}
 
 router.get("/", authMiddleware, async (req, res) => {
   try {
@@ -14,7 +30,8 @@ router.get("/", authMiddleware, async (req, res) => {
       .populate("preparationAgent", "fullName phone profileImage")
       .populate("deliveryAgent", "fullName phone profileImage")
       .sort({ createdAt: -1 });
-    res.json(orders);
+    const safeOrders = orders.map(orderToSafe);
+    res.json(safeOrders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -27,7 +44,14 @@ router.get("/:id", authMiddleware, async (req, res) => {
       .populate("deliveryAgent", "fullName phone profileImage");
     if (!order) return res.status(404).json({ message: "Order not found" });
     const items = await OrderItem.find({ orderId: order._id }).populate("foodstuffId", "name image unit");
-    res.json({ order, items });
+
+    const safeOrder = orderToSafe(order);
+
+    if (req.user.role === "customer" && String(order.userId) === String(req.user._id)) {
+      safeOrder.deliveryPin = order.deliveryPin;
+    }
+
+    res.json({ order: safeOrder, items });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -58,17 +82,23 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
+    const deliveryPin = generateDeliveryPin();
+
     const order = new Order({
       userId: req.user._id,
       delivery,
       total,
+      deliveryPin,
+      status: "Pending",
     });
     const savedOrder = await order.save();
 
     const orderItemDocs = itemDocs.map((d) => ({ ...d, orderId: savedOrder._id }));
     await OrderItem.insertMany(orderItemDocs);
 
-    res.status(201).json({ order: savedOrder });
+    const safeOrder = orderToSafe(savedOrder);
+    safeOrder.deliveryPin = deliveryPin;
+    res.status(201).json({ order: safeOrder });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -77,11 +107,102 @@ router.post("/", authMiddleware, async (req, res) => {
 router.put("/:id/status", authMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
-    const updated = await Order.findByIdAndUpdate(req.params.id, { status }, { returnDocument: 'after' });
-    if (!updated) return res.status(404).json({ message: "Order not found" });
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    if (order.status === status) {
+      return res.json(order);
+    }
+
+    if (!Order.canTransition(order.status, status)) {
+      return res.status(400).json({
+        message: `Cannot transition from "${order.status}" to "${status}"`,
+        currentStatus: order.status,
+        allowedTransitions: Order.canTransition ? (() => {
+          const map = { Pending: ["Confirmed", "Cancelled"], Confirmed: ["Preparing", "Cancelled"], Preparing: ["Ready", "Cancelled"], Ready: ["Out for Delivery", "Cancelled"], "Out for Delivery": ["On Route", "Delivered", "Cancelled"], "On Route": ["Delivered", "Cancelled"], Delivered: [], Cancelled: [] };
+          return map[order.status] || [];
+        })() : [],
+      });
+    }
+
+    if (status === "Delivered") {
+      return res.status(400).json({ message: "Use the verify-delivery endpoint to complete delivery" });
+    }
+
+    order.status = status;
+    if (status === "Out for Delivery") {
+      order.deliveryTime = new Date();
+    }
+    const updated = await order.save();
     res.json(updated);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post("/:id/verify-delivery", authMiddleware, async (req, res) => {
+  try {
+    const { pin, latitude, longitude } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    if (String(order.deliveryAgent) !== String(req.user._id)) {
+      return res.status(403).json({ message: "You are not assigned to this order" });
+    }
+
+    if (order.status !== "Out for Delivery" && order.status !== "On Route") {
+      return res.status(400).json({ message: `Order is not in delivery state (current: ${order.status})` });
+    }
+
+    if (order.deliveryVerified) {
+      return res.status(400).json({ message: "Delivery has already been verified" });
+    }
+
+    if (order.deliveryPinLocked) {
+      return res.status(423).json({ message: "Delivery verification is locked. Contact admin." });
+    }
+
+    if (!pin || pin.length !== 4) {
+      return res.status(400).json({ message: "PIN must be 4 digits" });
+    }
+
+    if (pin !== order.deliveryPin) {
+      order.deliveryPinAttempts += 1;
+
+      if (order.deliveryPinAttempts >= 5) {
+        order.deliveryPinLocked = true;
+        await order.save();
+        return res.status(423).json({
+          message: "Too many failed attempts. Verification locked. Contact admin.",
+          attempts: order.deliveryPinAttempts,
+          locked: true,
+        });
+      }
+
+      await order.save();
+      return res.status(400).json({
+        message: "Incorrect PIN",
+        attempts: order.deliveryPinAttempts,
+        maxAttempts: 5,
+      });
+    }
+
+    order.status = "Delivered";
+    order.deliveryVerified = true;
+    order.deliveryCompletedAt = new Date();
+    order.deliveryTime = new Date();
+    if (latitude != null && longitude != null) {
+      order.deliveryCompletedGps = { latitude, longitude };
+    }
+    await order.save();
+
+    res.json({
+      message: "Delivery verified successfully",
+      order: { _id: order._id, status: order.status, deliveryCompletedAt: order.deliveryCompletedAt },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 

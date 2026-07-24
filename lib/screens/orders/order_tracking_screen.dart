@@ -23,15 +23,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   ChatRoomData? _deliveryChatRoom;
 
   static const _steps = [
-    'Order Received',
+    'Order Sent',
     'Order Confirmed',
-    'Ingredients Being Prepared',
-    'Packaging Ingredients',
-    'Quality Check',
-    'Ready for Dispatch',
-    'Rider Assigned',
+    'Preparing Order',
     'Out for Delivery',
-    'Delivered',
+    'Order Delivered',
   ];
 
   @override
@@ -96,9 +92,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     switch (_orderStatus) {
       case 'Pending': return 0;
       case 'Confirmed': return 1;
-      case 'Preparing': return 2;
-      case 'Out for Delivery': return 7;
-      case 'Delivered': return 8;
+      case 'Preparing':
+      case 'Ready': return 2;
+      case 'Out for Delivery':
+      case 'On Route': return 3;
+      case 'Delivered': return 4;
       case 'Cancelled': return -1;
       default: return 0;
     }
@@ -108,9 +106,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   bool get _isDeliveryAgentAssigned => _deliveryAgentId != null;
 
   bool get _isPrepChatActive {
-    return _isPrepAgentAssigned &&
-        (_orderStatus == 'Preparing' || _orderStatus == 'Ready' ||
-         _orderStatus == 'Out for Delivery' || _orderStatus == 'On Route');
+    return _isPrepAgentAssigned && _orderStatus == 'Preparing';
   }
 
   bool get _isDeliveryChatActive {
@@ -119,11 +115,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   bool get _isPrepChatFrozen {
-    return _isPrepAgentAssigned && (_orderStatus == 'Delivered' || _orderStatus == 'Cancelled');
+    return _isPrepAgentAssigned && _orderStatus != 'Preparing';
   }
 
   bool get _isDeliveryChatFrozen {
-    return _isDeliveryAgentAssigned && (_orderStatus == 'Delivered' || _orderStatus == 'Cancelled');
+    return _isDeliveryAgentAssigned && _orderStatus != 'Out for Delivery' && _orderStatus != 'On Route';
   }
 
   bool get _isDone => _orderStatus == 'Delivered' || _orderStatus == 'Cancelled';
@@ -239,6 +235,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildOrderInfo(),
+                      if (_order?['deliveryPin'] != null && (_order!['deliveryPin'] as String).isNotEmpty)
+                        _buildDeliveryPinCard(),
                       const SizedBox(height: 20),
                       _buildProgressTimeline(),
                       if (_isTrackable()) ...[
@@ -310,6 +308,101 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             _infoRow(Icons.phone, 'Phone', delivery['phone'] ?? 'Not set'),
             _infoRow(Icons.payments, 'Total', '$total FCFA'),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeliveryPinCard() {
+    final pin = _order!['deliveryPin'] as String? ?? '';
+    if (pin.isEmpty) return const SizedBox.shrink();
+
+    final isDelivered = _orderStatus == 'Delivered';
+    final showWarning = !isDelivered && _orderStatus != 'Cancelled';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Card(
+        elevation: 0,
+        color: isDelivered ? Colors.grey.shade50 : const Color(0xFFFFF8E1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isDelivered ? Colors.grey.shade300 : Colors.amber.shade300,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isDelivered ? Icons.verified : Icons.pin,
+                    color: isDelivered ? Colors.green : Colors.amber.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Delivery Verification PIN',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDelivered ? Colors.grey.shade700 : Colors.amber.shade800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  pin,
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 12,
+                    color: isDelivered ? Colors.grey.shade500 : Colors.amber.shade800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  isDelivered
+                      ? 'PIN verified successfully'
+                      : 'Share this PIN with the delivery agent only after receiving your complete order',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDelivered ? Colors.green.shade600 : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+              if (showWarning) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 16, color: Colors.red.shade400),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Do NOT share this PIN until you have verified all items.',
+                          style: TextStyle(fontSize: 11, color: Colors.red.shade600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

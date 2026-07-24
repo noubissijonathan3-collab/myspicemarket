@@ -1,5 +1,16 @@
 const mongoose = require("mongoose");
 
+const VALID_TRANSITIONS = {
+  Pending: ["Confirmed", "Cancelled"],
+  Confirmed: ["Preparing", "Cancelled"],
+  Preparing: ["Ready", "Cancelled"],
+  Ready: ["Out for Delivery", "Cancelled"],
+  "Out for Delivery": ["On Route", "Delivered", "Cancelled"],
+  "On Route": ["Delivered", "Cancelled"],
+  Delivered: [],
+  Cancelled: [],
+};
+
 const orderSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -24,6 +35,14 @@ const orderSchema = new mongoose.Schema(
       default: null,
     },
     deliveryPin: { type: String, default: "" },
+    deliveryPinAttempts: { type: Number, default: 0 },
+    deliveryPinLocked: { type: Boolean, default: false },
+    deliveryVerified: { type: Boolean, default: false },
+    deliveryCompletedAt: { type: Date, default: null },
+    deliveryCompletedGps: {
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
+    },
     deliveryPhoto: { type: String, default: "" },
     deliverySignature: { type: String, default: "" },
     deliveryNotes: { type: String, default: "" },
@@ -36,5 +55,10 @@ const orderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+orderSchema.statics.canTransition = function (current, next) {
+  const allowed = VALID_TRANSITIONS[current];
+  return allowed ? allowed.includes(next) : false;
+};
 
 module.exports = mongoose.model("Order", orderSchema);
