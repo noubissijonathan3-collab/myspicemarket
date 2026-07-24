@@ -188,9 +188,20 @@ include __DIR__ . '/../../includes/loader.php';
                         <tr data-agent-id="<?php echo htmlspecialchars($aId); ?>" data-role="<?php echo $aRole; ?>">
                             <td>
                                 <div class="d-flex align-items-center gap-2">
+                                    <?php if (!empty($a['profileImage'])): ?>
+                                    <img src="<?php echo MSM_BACKEND_URL . '/' . ltrim($a['profileImage'], '/'); ?>" 
+                                         alt="<?php echo htmlspecialchars($aName); ?>" 
+                                         class="activity-avatar-placeholder" 
+                                         style="width:36px;height:36px;object-fit:cover;"
+                                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                                    <div class="activity-avatar-placeholder" style="width:36px;height:36px;font-size:0.75rem;background:<?php echo $colors[$colorIdx]; ?>;display:none;">
+                                        <?php echo $initials; ?>
+                                    </div>
+                                    <?php else: ?>
                                     <div class="activity-avatar-placeholder" style="width:36px;height:36px;font-size:0.75rem;background:<?php echo $colors[$colorIdx]; ?>;">
                                         <?php echo $initials; ?>
                                     </div>
+                                    <?php endif; ?>
                                     <span class="fw-semibold" style="font-size:0.85rem;"><?php echo htmlspecialchars($aName); ?></span>
                                 </div>
                             </td>
