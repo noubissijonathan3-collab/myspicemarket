@@ -124,23 +124,17 @@ class _MyAppState extends State<MyApp> {
   void _setupFirebaseMessaging() async {
     final messaging = FirebaseMessaging.instance;
 
-    const settings = NotificationSettings(
-      alert: AppleNotificationSetting.enabled,
-      badge: AppleNotificationSetting.enabled,
-      sound: AppleNotificationSetting.enabled,
-    );
     await messaging.requestPermission(alert: true, badge: true, sound: true);
 
     final token = await messaging.getToken();
     if (token != null) {
       try {
-        final authService = AuthService();
         await NotificationService.registerFcmToken(token);
       } catch (_) {}
     }
 
     messaging.onTokenRefresh.listen((token) {
-      NotificationService.registerFcmToken(token).catch((_) {});
+      NotificationService.registerFcmToken(token).catchError((_) {});
     });
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {

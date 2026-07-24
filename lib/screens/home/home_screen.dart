@@ -24,6 +24,7 @@ import '../../widgets/home/support_section.dart';
 import '../../widgets/home/recommended_section.dart';
 import '../../widgets/home/recently_viewed_section.dart';
 import '../../widgets/home/bottom_navigation.dart';
+import '../../ai/widgets/ai_floating_button.dart';
 import '../../utils/colors.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -155,9 +156,18 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: screens,
+          ),
+          Positioned(
+            right: 16,
+            bottom: 80,
+            child: const AiFloatingButton(),
+          ),
+        ],
       ),
     );
   }
